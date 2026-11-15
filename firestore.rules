@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+
+    match /users/{uid} {
+      // User dapat membaca dan mengubah profil miliknya sendiri.
+      // Untuk sistem XP/unlock yang anti-cheat, validasi harus dipindahkan ke Cloud Functions.
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid);
+      allow delete: if false;
+
+      match /vocabularyProgress/{wordId} {
+        allow read, create, update: if isOwner(uid);
+        allow delete: if isOwner(uid);
+      }
+      match /quizResults/{resultId} {
+        allow read, create: if isOwner(uid);
+        allow update, delete: if false;
+      }
+    }
+    // Materi kurikulum publik, jika nanti ditaruh ke Firestore.
+    match /courses/{document=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}
